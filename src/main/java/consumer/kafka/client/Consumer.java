@@ -18,10 +18,6 @@
 package consumer.kafka.client;
 import java.io.Serializable;
 import java.util.Properties;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
-import java.io.IOException;
 
 import org.apache.log4j.Logger;
 import org.apache.spark.SparkConf;
@@ -39,75 +35,48 @@ import consumer.kafka.ReceiverLauncher;
 public class Consumer implements Serializable {
 
 	private static final long serialVersionUID = 4332618245650072140L;
-
-	public void start() throws InstantiationException, IllegalAccessException,
-			ClassNotFoundException {
-
-		run();
-	}
-
-	private void run() {
-		
-		File configFile = new File("src/main/resources/kafka-spark.properties");
-		
-		try{
-			FileReader reader = new FileReader(configFile);
-			Properties props = new Properties();
-			props.load(reader);
-			
-			//props.put("zookeeper.hosts", "10.252.1.136");
-			//props.put("zookeeper.port", "2181");
-			//props.put("zookeeper.broker.path", "/brokers");
-			//props.put("kafka.topic", "test-topic");
-			//props.put("kafka.consumer.id", "test-id");
-			//props.put("zookeeper.consumer.connection", "10.252.5.113:2182");
-			//props.put("zookeeper.consumer.path", "/spark-kafka");
-
-			reader.close(); // close configFile reader
-			
-			//Create a SparkContext
-			SparkConf _sparkConf = new SparkConf().setAppName("kafka-spark-consumer").set(
-					"spark.streaming.receiver.writeAheadLog.enable", "false");
-			// Create a Spark Streaming Context
-			JavaStreamingContext jsc = new JavaStreamingContext(_sparkConf,
-					new Duration(1000));
-
-			// Specify number of Receivers you need.
-			int numberOfReceivers = 3;
-			
-
-			JavaDStream<MessageAndMetadata> unionStreams = ReceiverLauncher.launch(
-					jsc, props, numberOfReceivers, StorageLevel.MEMORY_ONLY());
-
-			unionStreams.foreachRDD(new Function2<JavaRDD<MessageAndMetadata>, Time, Void>() {
-				public Void call(JavaRDD<MessageAndMetadata> rdd, Time time) throws Exception {
-					rdd.collect();
-					System.out.println(" Number of records in this batch "+ rdd.count());
-					return null;
-					}
-				});
-
-			jsc.start();
-			jsc.awaitTermination();
-			
-			}
-		catch (FileNotFoundException ex){
-			Logger LOG = Logger.getLogger(this.getClass());
-			LOG.error("Config FileNotFound",ex);
-			LOG.trace(null,ex);
-			}
-		catch (IOException ex) {
-			Logger LOG = Logger.getLogger(this.getClass());
-			LOG.error("Config IO Error",ex);
-			LOG.trace(null,ex);
-			}
-		
-		
-	}
-
+	
 	public static void main(String[] args) throws Exception {
+		if (args.length <4){
+			System.err.println("Usage: Consumer <brokers> <topics> \n"+
+		"<brokers> is a list of one or more kafka brokers" +
+					"<topic> is a list of one or more kafkatopics to consumer from \n\n");
+			System.exit(1);
+		}
+		String brokers = args [0];
+		String topic = args[1];
+		
+		String[] splitbroker = brokers.split(":");
+		String hostname = splitbroker[0];
+		String port = splitbroker[1];
+		Properties props = new Properties();
 
-		Consumer consumer = new Consumer();
-		consumer.start();
+		props.put("zookeeper.hosts", hostname);
+		props.put("zookeeper.port", port);
+		props.put("zookeeper.broker.path", "/brokers");
+		props.put("kafka.topic", topic);
+		props.put("kafka.consumer.id", "test-id");
+		props.put("zookeeper.consumer.connection", brokers);
+		props.put("zookeeper.consumer.path", "/spark-kafka");
+
+		//Create a SparkContext
+		SparkConf _sparkConf = new SparkConf().setAppName("kafka-spark-consumer").set(
+					"spark.streaming.receiver.writeAheadLog.enable", "false");
+		// Create a Spark Streaming Context
+		JavaStreamingContext jsc = new JavaStreamingContext(_sparkConf,
+				new Duration(1000));
+		// Specify number of Receivers you need.
+		int numberOfReceivers = 3;
+		JavaDStream<MessageAndMetadata> unionStreams = ReceiverLauncher.launch(
+					jsc, props, numberOfReceivers, StorageLevel.MEMORY_ONLY());
+		unionStreams.foreachRDD(new Function2<JavaRDD<MessageAndMetadata>, Time, Void>() {
+			public Void call(JavaRDD<MessageAndMetadata> rdd, Time time) throws Exception {
+				rdd.collect();
+				System.out.println(" Number of records in this batch "+ rdd.count());
+				return null;
+				}
+			});
+		jsc.start();
+		jsc.awaitTermination();
 	}
-}
+	}
