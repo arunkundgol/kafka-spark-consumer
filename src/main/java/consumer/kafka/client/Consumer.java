@@ -20,6 +20,7 @@ package consumer.kafka.client;
 
 import java.io.Serializable;
 import java.util.Properties;
+import java.io.IOException;
 
 import org.apache.log4j.Logger;
 import org.apache.spark.SparkConf;
@@ -60,7 +61,7 @@ public class Consumer implements Serializable {
 			//props.put("kafka.consumer.id", "test-id");
 			//props.put("zookeeper.consumer.connection", "10.252.5.113:2182");
 			//props.put("zookeeper.consumer.path", "/spark-kafka");
-			
+
 			reader.close(); // close configFile reader
 			}
 		catch (FileNotFoundException ex){
