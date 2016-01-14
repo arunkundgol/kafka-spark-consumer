@@ -1,4 +1,4 @@
-/**
+ /**
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -15,11 +15,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package consumer.kafka.client;
-
 import java.io.Serializable;
 import java.util.Properties;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
 import java.io.IOException;
 
 import org.apache.log4j.Logger;
@@ -47,7 +48,7 @@ public class Consumer implements Serializable {
 
 	private void run() {
 		
-		File configFile = new File("config.properties");
+		File configFile = new File("src/main/resources/kafka-spark.properties");
 		
 		try{
 			FileReader reader = new FileReader(configFile);
@@ -79,7 +80,6 @@ public class Consumer implements Serializable {
 					jsc, props, numberOfReceivers, StorageLevel.MEMORY_ONLY());
 
 			unionStreams.foreachRDD(new Function2<JavaRDD<MessageAndMetadata>, Time, Void>() {
-				@Override
 				public Void call(JavaRDD<MessageAndMetadata> rdd, Time time) throws Exception {
 					rdd.collect();
 					System.out.println(" Number of records in this batch "+ rdd.count());
