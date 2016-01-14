@@ -21,6 +21,7 @@ package consumer.kafka.client;
 import java.io.Serializable;
 import java.util.Properties;
 
+import org.apache.log4j.Logger;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.function.Function2;
@@ -44,52 +45,61 @@ public class Consumer implements Serializable {
 	}
 
 	private void run() {
-
-		Properties props = new Properties();
-		props.put("zookeeper.hosts", "10.252.1.136");
-		props.put("zookeeper.port", "2181");
-		props.put("zookeeper.broker.path", "/brokers");
-		props.put("kafka.topic", "test-topic");
-		props.put("kafka.consumer.id", "test-id");
-		props.put("zookeeper.consumer.connection", "10.252.5.113:2182");
-		props.put("zookeeper.consumer.path", "/spark-kafka");
-		// Optional Properties
-		props.put("consumer.forcefromstart", "true");
-		props.put("consumer.fetchsizebytes", "1048576");
-		props.put("consumer.fillfreqms", "250");
-		props.put("consumer.backpressure.enabled", "true");
-
-		SparkConf _sparkConf = new SparkConf().set(
+		
+		File configFile = new File("config.properties");
+		
+		try{
+			FileReader reader = new FileReader(configFile);
+			Properties props = new Properties();
+			props.load(reader);
+			
+			//props.put("zookeeper.hosts", "10.252.1.136");
+			//props.put("zookeeper.port", "2181");
+			//props.put("zookeeper.broker.path", "/brokers");
+			//props.put("kafka.topic", "test-topic");
+			//props.put("kafka.consumer.id", "test-id");
+			//props.put("zookeeper.consumer.connection", "10.252.5.113:2182");
+			//props.put("zookeeper.consumer.path", "/spark-kafka");
+			
+			reader.close(); // close configFile reader
+			}
+		catch (FileNotFoundException ex){
+			Logger LOG = Logger.getLogger(this.getClass());
+			LOG.error("Config FileNotFound",ex);
+			LOG.trace(null,ex);
+			}
+		catch (IOException ex) {
+			Logger LOG = Logger.getLogger(this.getClass());
+			LOG.error("Config IO Error",ex);
+			LOG.trace(null,ex);
+			}
+		
+		//Create a SparkContext
+		SparkConf _sparkConf = new SparkConf().setAppName("kafka-spark-consumer").set(
 				"spark.streaming.receiver.writeAheadLog.enable", "false");
-		;
-
+		// Create a Spark Streaming Context
 		JavaStreamingContext jsc = new JavaStreamingContext(_sparkConf,
 				new Duration(1000));
 
 		// Specify number of Receivers you need.
-
 		int numberOfReceivers = 3;
+		
 
 		JavaDStream<MessageAndMetadata> unionStreams = ReceiverLauncher.launch(
 				jsc, props, numberOfReceivers, StorageLevel.MEMORY_ONLY());
 
-		unionStreams
-				.foreachRDD(new Function2<JavaRDD<MessageAndMetadata>, Time, Void>() {
-
-					@Override
-					public Void call(JavaRDD<MessageAndMetadata> rdd, Time time)
-							throws Exception {
-
-						rdd.collect();
-						System.out.println(" Number of records in this batch "
-								+ rdd.count());
-
-						return null;
-					}
-				});
+		unionStreams.foreachRDD(new Function2<JavaRDD<MessageAndMetadata>, Time, Void>() {
+			@Override
+			public Void call(JavaRDD<MessageAndMetadata> rdd, Time time) throws Exception {
+				rdd.collect();
+				System.out.println(" Number of records in this batch "+ rdd.count());
+				return null;
+				}
+			});
 
 		jsc.start();
 		jsc.awaitTermination();
+		
 	}
 
 	public static void main(String[] args) throws Exception {
