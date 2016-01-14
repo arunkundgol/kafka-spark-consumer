@@ -96,11 +96,6 @@ public class Consumer implements Serializable {
 			LOG.error("Config FileNotFound",ex);
 			LOG.trace(null,ex);
 			}
-		catch (IOException ex) {
-			Logger LOG = Logger.getLogger(this.getClass());
-			LOG.error("Config IO Error",ex);
-			LOG.trace(null,ex);
-			}
 		
 		
 	}
